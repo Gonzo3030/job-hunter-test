@@ -1,0 +1,1 @@
+This directory stores your resume and other application-related data files.
