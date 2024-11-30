@@ -14,36 +14,47 @@ class JobHunter:
     
     def hunt_jobs(self):
         """Main job hunting process"""
-        print('Initializing job search on LinkedIn...')
+        print('Initializing job search on LinkedIn...\n')
         all_jobs = []
         
-        # Prioritize remote searches first
+        # Search and process jobs in batches by location
         for location in Config.LOCATIONS:
+            location_jobs = []
+            print(f'Searching in {location}...')
+            
             for keyword in Config.KEYWORDS:
-                print(f'Searching for {keyword} in {location}...')
+                print(f'\nSearching for {keyword}...')
                 try:
                     jobs = self.linkedin_client.search_jobs(keyword, location)
                     print(f'Found {len(jobs)} potential matches')
-                    all_jobs.extend(jobs)
+                    location_jobs.extend(jobs)
                 except Exception as e:
-                    print(f'Error searching LinkedIn for {keyword} in {location}: {str(e)}')
+                    print(f'Error searching LinkedIn: {str(e)}')
+            
+            # Process this location's jobs before moving to next location
+            print(f'\nProcessing {len(location_jobs)} jobs found in {location}...')
+            relevant_jobs = self._filter_jobs(location_jobs)
+            print(f'Relevant jobs after filtering: {len(relevant_jobs)}\n')
+            
+            if relevant_jobs:
+                ranked_jobs = self._rank_jobs(relevant_jobs)
+                print('Top matches for this location:')
+                for job in ranked_jobs[:5]:
+                    print(f"- {job['title']} at {job['company']} (Score: {job['match_score']})")
+                
+                all_jobs.extend(relevant_jobs)
+                
+                # Process top 3 jobs from this location
+                for job in ranked_jobs[:3]:
+                    if Config.AUTO_APPLY:
+                        self._apply_to_job(job)
+                    else:
+                        self._save_job_for_review(job)
+                        
+            print('\n' + '-'*50 + '\n')
         
-        print(f'\nTotal jobs found: {len(all_jobs)}')
+        print(f'\nSearch complete! Found {len(all_jobs)} total relevant jobs')
         
-        # Filter and rank jobs
-        relevant_jobs = self._filter_jobs(all_jobs)
-        print(f'Relevant jobs after filtering: {len(relevant_jobs)}')
-        
-        ranked_jobs = self._rank_jobs(relevant_jobs)
-        print('Jobs ranked by match score\n')
-        
-        # Apply to top ranked jobs
-        for job in ranked_jobs[:Config.MAX_APPLICATIONS_PER_DAY]:
-            if Config.AUTO_APPLY:
-                self._apply_to_job(job)
-            else:
-                self._save_job_for_review(job)
-    
     def _filter_jobs(self, jobs: List[Dict]) -> List[Dict]:
         """Filter jobs based on criteria"""
         filtered = []
@@ -53,7 +64,6 @@ class JobHunter:
                 continue
             
             title_lower = job['title'].lower()
-            description_lower = job.get('description', '').lower()
             company_lower = job['company'].lower()
             
             # Skip if contains exclude terms
@@ -70,12 +80,6 @@ class JobHunter:
                 'chief' in title_lower
             ])
             
-            # Check if it's in target industry
-            is_target_industry = any([
-                any(industry in description_lower for industry in Config.TARGET_INDUSTRIES),
-                any(industry in company_lower for industry in Config.TARGET_INDUSTRIES)
-            ])
-            
             # Check if it's a relevant role
             is_relevant_role = any([
                 'marketing' in title_lower,
@@ -85,9 +89,9 @@ class JobHunter:
                 'bd' in title_lower and ('head' in title_lower or 'director' in title_lower)
             ])
             
-            if (is_leadership or 'web3' in title_lower) and (is_relevant_role or is_target_industry):
+            if is_leadership and is_relevant_role:
                 filtered.append(job)
-                print(f'\nMatched Job:\nTitle: {job["title"]}\nCompany: {job["company"]}\nLocation: {job["location"]}\n')
+                print(f'Matched Job: {job["title"]} at {job["company"]}')
         
         return filtered
     
@@ -96,14 +100,12 @@ class JobHunter:
         for job in jobs:
             score = 0
             title_lower = job['title'].lower()
-            description_lower = job.get('description', '').lower()
             company_lower = job['company'].lower()
             
             # Priority for Web3/Blockchain
-            if 'web3' in title_lower or 'blockchain' in title_lower:
+            if any(term in title_lower or term in company_lower 
+                   for term in ['web3', 'blockchain', 'crypto', 'defi']):
                 score += 3
-            elif any(term in description_lower for term in ['web3', 'blockchain', 'crypto']):
-                score += 2
                 
             # Priority for remote roles
             if 'remote' in job['location'].lower():
@@ -156,16 +158,3 @@ class JobHunter:
         })
         
         print(f'Job saved: {job["url"]}')
-    
-    def _save_job_for_review(self, job: Dict):
-        """Save job for manual review"""
-        self.applied_jobs.append({
-            'id': job['id'],
-            'title': job['title'],
-            'company': job['company'],
-            'date_saved': datetime.now().isoformat(),
-            'status': 'to_review',
-            'match_score': job['match_score'],
-            'application_url': job['url']
-        })
-        print(f'Saved job for review: {job["title"]} at {job["company"]}')
