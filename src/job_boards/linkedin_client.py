@@ -1,6 +1,6 @@
 import requests
 from urllib.parse import urlencode
-from ..config import Config
+from src.config import Config
 
 class LinkedInClient:
     def __init__(self):
@@ -12,15 +12,14 @@ class LinkedInClient:
         """Search for jobs on LinkedIn"""
         print(f'Searching LinkedIn for {keywords} in {location}')
         
-        # For now, just use LinkedIn's public API which doesn't require authentication
         base_url = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search'
         
         params = {
             'keywords': keywords,
             'location': location,
             'start': 0,
-            'sortBy': 'R',  # Relevance
-            'f_TPR': 'r86400',  # Past 24 hours
+            'sortBy': 'R',
+            'f_TPR': 'r86400',
         }
         
         try:
