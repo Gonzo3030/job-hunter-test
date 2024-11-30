@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import List, Dict
-from ..job_boards.linkedin_client import LinkedInClient
-from ..parsers.resume_parser import ResumeAnalyzer
-from ..utils.cover_letter_generator import CoverLetterGenerator
-from ..config import Config
+from src.job_boards.linkedin_client import LinkedInClient
+from src.parsers.resume_parser import ResumeAnalyzer
+from src.utils.cover_letter_generator import CoverLetterGenerator
+from src.config import Config
 
 class JobHunter:
     def __init__(self):
@@ -66,8 +66,16 @@ class JobHunter:
     def _rank_jobs(self, jobs: List[Dict]) -> List[Dict]:
         """Rank jobs based on match score"""
         for job in jobs:
-            match_score = self.resume_analyzer.get_job_match_score(job['description'])
-            job['match_score'] = match_score
+            # Simple scoring for now
+            score = 0
+            title_lower = job['title'].lower()
+            if 'web3' in title_lower or 'blockchain' in title_lower:
+                score += 2
+            if 'head' in title_lower or 'director' in title_lower:
+                score += 1
+            if 'marketing' in title_lower:
+                score += 1
+            job['match_score'] = score
         
         return sorted(jobs, key=lambda x: x['match_score'], reverse=True)
     
@@ -79,7 +87,7 @@ class JobHunter:
         cover_letter = self.cover_letter_generator.generate(
             job_title=job['title'],
             company_name=job['company'],
-            job_description=job['description']
+            job_description=job.get('description', '')
         )
         
         print('Generated custom cover letter')
