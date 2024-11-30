@@ -30,11 +30,72 @@
             color: #34495e;
             margin-top: 0;
         }
+        .search-form {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
     <h1>Job Hunter</h1>
     <p>Welcome to Job Hunter! Your journey to finding the perfect job starts here.</p>
+    
+    <div class="job-section">
+        <h2>Search Jobs</h2>
+        <form class="search-form">
+            <div class="form-group">
+                <label for="keywords">Keywords:</label>
+                <input type="text" id="keywords" placeholder="Job title, skills, or company">
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <input type="text" id="location" placeholder="City, state, or zip code">
+            </div>
+            
+            <div class="form-group">
+                <label for="job-type">Job Type:</label>
+                <select id="job-type">
+                    <option value="">All Types</option>
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="internship">Internship</option>
+                </select>
+            </div>
+            
+            <button type="submit">Search Jobs</button>
+        </form>
+    </div>
+
     <div class="job-section">
         <h2>Featured Jobs</h2>
         <p>Coming soon...</p>
