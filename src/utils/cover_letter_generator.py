@@ -1,66 +1,71 @@
+import os
+from datetime import datetime
+from pathlib import Path
+
 class CoverLetterGenerator:
     def __init__(self):
-        self.templates = {
-            'intro': [
-                "I am writing to express my strong interest in the {role} position at {company}. With over 8 years of experience leading marketing and growth initiatives in tech companies, including significant experience in the Web3 space, I believe I would be an excellent fit for this role.",
-            ],
-            'experience': [
-                "Most recently, as Head of Web3 Marketing at Immunefi, I led marketing initiatives that resulted in over $150M in available bug bounties and achieved 10x growth. I built and managed a team of 6 marketers while establishing comprehensive business development and partnership programs.",
-            ],
-            'alignment': [
-                "Your need for {key_requirements} aligns perfectly with my experience in {matching_experience}. I'm particularly excited about {company}'s {interesting_aspect} and believe my background in {relevant_background} would allow me to make immediate contributions.",
-            ],
-            'closing': [
-                "I would welcome the opportunity to discuss how my background and skills would benefit {company}. Thank you for considering my application.",
-            ]
-        }
-    
+        # Create cover_letters directory if it doesn't exist
+        self.cover_letters_dir = Path('cover_letters')
+        self.cover_letters_dir.mkdir(exist_ok=True)
+
     def generate(self, job_title: str, company_name: str, job_description: str) -> str:
         """Generate a customized cover letter"""
-        # Extract key requirements and interesting aspects from job description
-        key_requirements = self._extract_key_requirements(job_description)
-        interesting_aspect = self._extract_company_focus(job_description)
+        # Generate the cover letter content
+        cover_letter = self._generate_content(job_title, company_name, job_description)
         
-        # Match requirements with experience
-        matching_experience = self._match_experience(key_requirements)
-        relevant_background = self._get_relevant_background(job_description)
+        # Create filename using company and date
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{company_name.replace(' ', '_')}_{timestamp}.txt"
+        filepath = self.cover_letters_dir / filename
         
-        # Generate letter
-        sections = []
-        sections.append(self.templates['intro'][0].format(
-            role=job_title,
-            company=company_name
-        ))
-        sections.append(self.templates['experience'][0])
-        sections.append(self.templates['alignment'][0].format(
-            key_requirements=key_requirements,
-            matching_experience=matching_experience,
-            company=company_name,
-            interesting_aspect=interesting_aspect,
-            relevant_background=relevant_background
-        ))
-        sections.append(self.templates['closing'][0].format(
-            company=company_name
-        ))
+        # Save the cover letter
+        with open(filepath, 'w') as f:
+            f.write(cover_letter)
         
-        return '\n\n'.join(sections)
-    
-    def _extract_key_requirements(self, job_description: str) -> str:
-        """Extract key requirements from job description"""
-        # TODO: Implement proper requirement extraction
-        return "strategic marketing leadership and team management"
-    
-    def _extract_company_focus(self, job_description: str) -> str:
-        """Extract company focus/interesting aspects"""
-        # TODO: Implement proper focus extraction
-        return "innovative approach to market challenges"
-    
-    def _match_experience(self, requirements: str) -> str:
-        """Match requirements with relevant experience"""
-        # TODO: Implement proper matching
-        return "leading high-performance marketing teams and driving significant growth"
-    
-    def _get_relevant_background(self, job_description: str) -> str:
-        """Get relevant background based on job description"""
-        # TODO: Implement proper background matching
-        return "Web3 marketing and team leadership"
+        print(f'Cover letter saved to: {filepath}')
+        return cover_letter
+
+    def _generate_content(self, job_title: str, company_name: str, job_description: str) -> str:
+        """Generate the actual cover letter content"""
+        # Basic template with your background
+        cover_letter = f"""Dear Hiring Manager at {company_name},
+
+I am writing to express my strong interest in the {job_title} position at {company_name}. With my extensive experience in marketing leadership roles, including significant achievements in Web3 and blockchain spaces, I am confident in my ability to contribute meaningfully to your team.
+
+Most recently, as Head of Web3 Marketing at Immunefi, I led marketing initiatives that resulted in over $150M in available bug bounties and achieved 10x growth. I built and managed a team of 6 marketers while establishing comprehensive business development and partnership programs.
+
+"""
+
+        # Add customized middle paragraph based on job description
+        if job_description:
+            key_points = self._extract_key_points(job_description)
+            cover_letter += f"Your need for {key_points} aligns perfectly with my experience. "
+
+        # Closing
+        cover_letter += f"""
+
+I would welcome the opportunity to discuss how my background and skills would benefit {company_name} and contribute to your continued success.
+
+Best regards,
+Ivan Benavides"""
+
+        return cover_letter
+
+    def _extract_key_points(self, job_description: str) -> str:
+        """Extract key points from job description to customize letter"""
+        key_points = []
+        
+        # Check for key areas in description
+        if 'web3' in job_description.lower() or 'blockchain' in job_description.lower():
+            key_points.append('Web3 expertise')
+        if 'team' in job_description.lower() or 'leadership' in job_description.lower():
+            key_points.append('team leadership')
+        if 'growth' in job_description.lower():
+            key_points.append('growth marketing')
+        if 'strategy' in job_description.lower():
+            key_points.append('strategic marketing')
+        
+        if not key_points:
+            return 'marketing leadership and strategic growth'
+            
+        return ', '.join(key_points)
