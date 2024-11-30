@@ -1,4 +1,5 @@
 import requests
+from urllib.parse import urlencode
 from ..config import Config
 
 class LinkedInClient:
@@ -6,62 +7,93 @@ class LinkedInClient:
         self.client_id = Config.LINKEDIN_CLIENT_ID
         self.client_secret = Config.LINKEDIN_CLIENT_SECRET
         self.access_token = None
-        self._authenticate()
-    
-    def _authenticate(self):
-        """Authenticate with LinkedIn"""
-        auth_url = 'https://www.linkedin.com/oauth/v2/accessToken'
-        data = {
-            'grant_type': 'client_credentials',
-            'client_id': self.client_id,
-            'client_secret': self.client_secret
-        }
-        response = requests.post(auth_url, data=data)
-        if response.status_code == 200:
-            self.access_token = response.json()['access_token']
-        else:
-            raise Exception(f'LinkedIn authentication failed: {response.text}')
-    
+
     def search_jobs(self, keywords, location):
         """Search for jobs on LinkedIn"""
         print(f'Searching LinkedIn for {keywords} in {location}')
         
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json',
-        }
+        # For now, just use LinkedIn's public API which doesn't require authentication
+        base_url = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search'
         
-        # Using LinkedIn's Job Search API
-        url = 'https://api.linkedin.com/v2/jobSearch'
         params = {
             'keywords': keywords,
             'location': location,
-            'count': 20
+            'start': 0,
+            'sortBy': 'R',  # Relevance
+            'f_TPR': 'r86400',  # Past 24 hours
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params)
+            url = f'{base_url}?{urlencode(params)}'
+            response = requests.get(
+                url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (compatible; JobBot/1.0)',
+                }
+            )
+            
             if response.status_code == 200:
-                jobs = response.json().get('elements', [])
-                return self._parse_jobs(jobs)
+                return self._parse_jobs(response.text)
             else:
-                print(f'LinkedIn API error: {response.status_code} - {response.text}')
+                print(f'Error searching LinkedIn: Status code {response.status_code}')
                 return []
+                
         except Exception as e:
             print(f'Error searching LinkedIn: {str(e)}')
             return []
     
-    def _parse_jobs(self, jobs_data):
-        """Parse LinkedIn job data into standard format"""
-        parsed_jobs = []
-        for job in jobs_data:
-            parsed_jobs.append({
-                'id': job.get('id'),
-                'title': job.get('title', ''),
-                'company': job.get('company', {}).get('name', ''),
-                'location': job.get('location', ''),
-                'description': job.get('description', ''),
-                'url': job.get('applyUrl', ''),
-                'source': 'LinkedIn'
-            })
-        return parsed_jobs
+    def _parse_jobs(self, html_content):
+        """Parse LinkedIn jobs from HTML response"""
+        from bs4 import BeautifulSoup
+        
+        jobs = []
+        soup = BeautifulSoup(html_content, 'html.parser')
+        
+        job_cards = soup.find_all('div', {'class': 'job-search-card'})
+        
+        for card in job_cards:
+            try:
+                title = card.find('h3', {'class': 'base-search-card__title'}).text.strip()
+                company = card.find('h4', {'class': 'base-search-card__subtitle'}).text.strip()
+                location = card.find('span', {'class': 'job-search-card__location'}).text.strip()
+                job_link = card.find('a', {'class': 'base-card__full-link'}).get('href')
+                
+                job_data = {
+                    'id': job_link.split('?')[0].split('-')[-1],
+                    'title': title,
+                    'company': company,
+                    'location': location,
+                    'url': job_link,
+                    'source': 'LinkedIn',
+                    'description': self._get_job_description(job_link) if job_link else ''
+                }
+                
+                jobs.append(job_data)
+                print(f'Found job: {title} at {company}')
+                
+            except Exception as e:
+                print(f'Error parsing job card: {str(e)}')
+                continue
+        
+        return jobs
+    
+    def _get_job_description(self, job_url):
+        """Get full job description from job detail page"""
+        try:
+            response = requests.get(
+                job_url,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (compatible; JobBot/1.0)',
+                }
+            )
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                description_div = soup.find('div', {'class': 'description__text'})
+                if description_div:
+                    return description_div.text.strip()
+            return ''
+            
+        except Exception as e:
+            print(f'Error getting job description: {str(e)}')
+            return ''
