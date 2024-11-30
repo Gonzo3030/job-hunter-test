@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Dict
 from ..job_boards.linkedin_client import LinkedInClient
 from ..parsers.resume_parser import ResumeAnalyzer
@@ -13,17 +14,28 @@ class JobHunter:
     
     def hunt_jobs(self):
         """Main job hunting process"""
+        print('Initializing job search on LinkedIn...')
         all_jobs = []
         
         # Search across all configured locations and keywords
         for location in Config.LOCATIONS:
             for keyword in Config.KEYWORDS:
-                jobs = self.linkedin_client.search_jobs(keyword, location)
-                all_jobs.extend(jobs)
+                print(f'Searching for {keyword} in {location}...')
+                try:
+                    jobs = self.linkedin_client.search_jobs(keyword, location)
+                    print(f'Found {len(jobs)} potential matches')
+                    all_jobs.extend(jobs)
+                except Exception as e:
+                    print(f'Error searching LinkedIn for {keyword} in {location}: {str(e)}')
+        
+        print(f'Total jobs found: {len(all_jobs)}')
         
         # Filter and rank jobs
         relevant_jobs = self._filter_jobs(all_jobs)
+        print(f'Relevant jobs after filtering: {len(relevant_jobs)}')
+        
         ranked_jobs = self._rank_jobs(relevant_jobs)
+        print('Jobs ranked by match score')
         
         # Apply to top ranked jobs
         for job in ranked_jobs[:Config.MAX_APPLICATIONS_PER_DAY]:
@@ -61,6 +73,8 @@ class JobHunter:
     
     def _apply_to_job(self, job: Dict):
         """Apply to a specific job"""
+        print(f'\nPreparing application for: {job["title"]} at {job["company"]}')
+        
         # Generate custom cover letter
         cover_letter = self.cover_letter_generator.generate(
             job_title=job['title'],
@@ -68,17 +82,30 @@ class JobHunter:
             job_description=job['description']
         )
         
-        # TODO: Implement actual application submission
+        print('Generated custom cover letter')
+        
         # For now, just track the application
         self.applied_jobs.append({
             'id': job['id'],
             'title': job['title'],
             'company': job['company'],
-            'date_applied': datetime.now(),
-            'status': 'applied'
+            'date_applied': datetime.now().isoformat(),
+            'status': 'ready_to_apply',
+            'match_score': job['match_score'],
+            'application_url': job['url']
         })
+        
+        print(f'Job saved: {job["url"]}')
     
     def _save_job_for_review(self, job: Dict):
         """Save job for manual review"""
-        # TODO: Implement saving to database or file
-        pass
+        self.applied_jobs.append({
+            'id': job['id'],
+            'title': job['title'],
+            'company': job['company'],
+            'date_saved': datetime.now().isoformat(),
+            'status': 'to_review',
+            'match_score': job['match_score'],
+            'application_url': job['url']
+        })
+        print(f'Saved job for review: {job["title"]} at {job["company"]}')

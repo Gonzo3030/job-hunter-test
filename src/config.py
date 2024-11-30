@@ -4,10 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # API Keys
+    # LinkedIn API Keys
     LINKEDIN_CLIENT_ID = os.getenv('LINKEDIN_CLIENT_ID')
     LINKEDIN_CLIENT_SECRET = os.getenv('LINKEDIN_CLIENT_SECRET')
-    INDEED_PUBLISHER_ID = os.getenv('INDEED_PUBLISHER_ID')
     
     # Job Search Parameters
     LOCATIONS = ['Austin, TX', 'Remote']
